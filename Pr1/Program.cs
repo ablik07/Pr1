@@ -74,7 +74,7 @@ namespace DailyExpenses
                 switch (choice)
                 {
                     case "1":
-                        Console.WriteLine("\nВсе расходы:");
+                        Console.WriteLine("\nВсе расходы");
                         foreach (var expense in expenses)
                         {
                             Console.WriteLine(expense);

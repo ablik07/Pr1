@@ -5,9 +5,7 @@ namespace TextAnalyzer
 {
     class Program
     {
-        static List<TextData> allTexts = new List<TextData>();
-
-        class TextData
+        class TextInfo
         {
             public string Text;
             public int Words;
@@ -16,30 +14,34 @@ namespace TextAnalyzer
             public int Sentences;
             public int Vowels;
             public int Consonants;
+            public Dictionary<char, int> Letters = new Dictionary<char, int>();
             public DateTime Date;
         }
 
-        static void Main()
+        static List<TextInfo> allTexts = new List<TextInfo>();
+        static char[] vowels = { 'а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я' };
+
+        static void Main(string[] args)
         {
             Console.WriteLine("Анализатор текста");
 
             while (true)
             {
-                Console.WriteLine("\n1 - Анализ");
-                Console.WriteLine("2 - История");
-                Console.WriteLine("3 - Выход");
-                Console.Write("Ваш выбор: ");
+                Console.WriteLine("\n1. Новый текст");
+                Console.WriteLine("2. История");
+                Console.WriteLine("3. Выход");
+                Console.Write("Выбор: ");
 
                 string choice = Console.ReadLine();
 
-                if (choice == "1") Analyze();
-                else if (choice == "2") ShowHistory();
+                if (choice == "1") NewText();
+                else if (choice == "2") ShowAll();
                 else if (choice == "3") break;
-                else Console.WriteLine("Неверный выбор");
+                else Console.WriteLine("Ошибка");
             }
         }
 
-        static void Analyze()
+        static void NewText()
         {
             Console.WriteLine("\nВведите текст (от 100 символов):");
             string text = Console.ReadLine();
@@ -50,87 +52,113 @@ namespace TextAnalyzer
                 return;
             }
 
-            TextData data = new TextData();
-            data.Text = text;
-            data.Date = DateTime.Now;
+            TextInfo info = new TextInfo();
+            info.Text = text;
+            info.Date = DateTime.Now;
 
-            // Подсчет слов
+            Analyze(text, info);
+            allTexts.Add(info);
+            ShowText(info);
+        }
+
+        static void Analyze(string text, TextInfo info)
+        {
+            // Слова
             string[] words = text.Split(' ', ',', '.', '!', '?', ';', ':', '-', '\n', '\r', '\t');
-            data.Words = 0;
-            data.ShortWord = "";
-            data.LongWord = "";
+            info.Words = 0;
+            info.ShortWord = "";
+            info.LongWord = "";
 
             foreach (string word in words)
             {
                 if (word.Length > 0)
                 {
-                    data.Words++;
-
-                    if (data.ShortWord == "" || word.Length < data.ShortWord.Length)
-                        data.ShortWord = word;
-
-                    if (word.Length > data.LongWord.Length)
-                        data.LongWord = word;
+                    info.Words++;
+                    if (info.ShortWord == "" || word.Length < info.ShortWord.Length) info.ShortWord = word;
+                    if (word.Length > info.LongWord.Length) info.LongWord = word;
                 }
             }
 
-            // Подсчет предложений
-            data.Sentences = 0;
+            // Предложения
+            info.Sentences = 0;
             foreach (char c in text)
             {
-                if (c == '.' || c == '!' || c == '?')
-                    data.Sentences++;
+                if (c == '.' || c == '!' || c == '?') info.Sentences++;
             }
 
-            // Подсчет букв
-            data.Vowels = 0;
-            data.Consonants = 0;
-            string vowelLetters = "аеёиоуыэюя";
+            // Буквы
+            info.Vowels = 0;
+            info.Consonants = 0;
+            info.Letters.Clear();
 
-            foreach (char c in text.ToLower())
+            foreach (char c in text)
             {
                 if (char.IsLetter(c))
                 {
-                    if (vowelLetters.Contains(c.ToString()))
-                        data.Vowels++;
-                    else
-                        data.Consonants++;
+                    char lower = char.ToLower(c);
+                    bool isVowel = false;
+
+                    foreach (char v in vowels)
+                    {
+                        if (lower == v)
+                        {
+                            isVowel = true;
+                            break;
+                        }
+                    }
+
+                    if (isVowel) info.Vowels++;
+                    else info.Consonants++;
+
+                    if (info.Letters.ContainsKey(lower)) info.Letters[lower]++;
+                    else info.Letters[lower] = 1;
                 }
             }
-
-            allTexts.Add(data);
-            ShowResults(data);
         }
 
-        static void ShowResults(TextData data)
+        static void ShowText(TextInfo info)
         {
-            Console.WriteLine("\nРезультаты:");
-            Console.WriteLine("Слов: " + data.Words);
-            Console.WriteLine("Предложений: " + data.Sentences);
-            Console.WriteLine("Короткое слово: " + data.ShortWord);
-            Console.WriteLine("Длинное слово: " + data.LongWord);
-            Console.WriteLine("Гласные: " + data.Vowels);
-            Console.WriteLine("Согласные: " + data.Consonants);
+            Console.WriteLine($"\nДата: {info.Date}");
+            Console.WriteLine($"Символов: {info.Text.Length}");
+            Console.WriteLine($"Слов: {info.Words}");
+            Console.WriteLine($"Предложений: {info.Sentences}");
+            Console.WriteLine($"Гласные: {info.Vowels}");
+            Console.WriteLine($"Согласные: {info.Consonants}");
+            Console.WriteLine($"Короткое: {info.ShortWord}");
+            Console.WriteLine($"Длинное: {info.LongWord}");
+
+            Console.WriteLine("Буквы:");
+            foreach (var letter in info.Letters)
+            {
+                double percent = (double)letter.Value / (info.Vowels + info.Consonants) * 100;
+                Console.WriteLine($"  {letter.Key}: {letter.Value} ({percent:F1}%)");
+            }
         }
 
-        static void ShowHistory()
+        static void ShowAll()
         {
             if (allTexts.Count == 0)
             {
-                Console.WriteLine("Нет данных");
+                Console.WriteLine("\nНет данных");
                 return;
             }
 
-            Console.WriteLine("\nИстория анализов:");
+            Console.WriteLine($"\nВсего текстов: {allTexts.Count}");
 
             for (int i = 0; i < allTexts.Count; i++)
             {
-                TextData data = allTexts[i];
-                string preview = data.Text.Length > 50 ? data.Text.Substring(0, 50) + "..." : data.Text;
-
-                Console.WriteLine($"{i + 1}. {preview}");
-                Console.WriteLine($"   Слов: {data.Words}, Предложений: {data.Sentences}");
+                TextInfo info = allTexts[i];
+                string preview = info.Text.Length > 50 ? info.Text.Substring(0, 50) + "..." : info.Text;
+                Console.WriteLine($"\nТекст {i + 1}: {preview}");
+                Console.WriteLine($"Слов: {info.Words}, Предложений: {info.Sentences}");
             }
+
+            int totalWords = 0;
+            foreach (TextInfo info in allTexts)
+            {
+                totalWords += info.Words;
+            }
+            Console.WriteLine($"\nВсего слов: {totalWords}");
         }
     }
 }

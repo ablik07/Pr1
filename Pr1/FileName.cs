@@ -25,7 +25,7 @@ public abstract class Person
 
     public virtual string GetInfo()
     {
-        return $"ID: {id}, Имя: {name}, Возраст: {age}";
+        return $"ID: {id}, Имя: {name}, Возраст: {age}"
     }
 }
 

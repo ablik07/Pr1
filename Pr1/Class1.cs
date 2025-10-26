@@ -249,4 +249,53 @@ class AutoServiceGame
         cmd.ExecuteNonQuery();
     }
 
-  
+    private void SaveGame() => new SqlCommand("UPDATE GameSessions SET CurrentMoney = @money WHERE Id = @id",
+        new SqlConnection(connectionString))
+    { Parameters = { new SqlParameter("@money", money), new SqlParameter("@id", gameId) } }.ExecuteNonQuery();
+
+    private void LogTransaction(int client, string part, int amount, string status) =>
+        new SqlCommand("INSERT INTO Transactions (GameId, ClientNumber, PartName, Amount, Status) VALUES (@id, @client, @part, @amount, @status)",
+        new SqlConnection(connectionString))
+        {
+            Parameters = {
+            new SqlParameter("@id", gameId), new SqlParameter("@client", client),
+            new SqlParameter("@part", part), new SqlParameter("@amount", amount),
+            new SqlParameter("@status", status) }
+        }.ExecuteNonQuery();
+
+    private void UpdateOrders()
+    {
+        orders.Clear();
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        var cmd = new SqlCommand("SELECT PartName, Quantity, DeliveryCounter FROM PurchaseOrders WHERE GameId = @id", connection);
+        cmd.Parameters.AddWithValue("@id", gameId);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) orders.Add(new PurchaseOrder(reader["PartName"].ToString(), (int)reader["Quantity"], (int)reader["DeliveryCounter"]));
+    }
+}
+
+class PurchaseOrder
+{
+    public string PartName { get; set; }
+    public int Quantity { get; set; }
+    public int DeliveryCounter { get; set; }
+    public PurchaseOrder(string name, int qty, int counter) { PartName = name; Quantity = qty; DeliveryCounter = counter; }
+}
+
+class Part { public string Name; public int Price; }
+
+class Program
+{
+    static void Main()
+    {
+        try
+        {
+            new AutoServiceGame(5000, "Server=localhost;Database=AutoServiceGame;Integrated Security=true;").RunGame();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка: {ex.Message}\nПроверьте подключение к БД");
+        }
+    }
+}

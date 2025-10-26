@@ -132,4 +132,49 @@ class AutoServiceGame
         return (int)(cmd.ExecuteScalar() ?? 500);
     }
 
-   
+    private void AcceptOrder(string brokenPart, int repairCost, int client)
+    {
+        if (warehouse.GetValueOrDefault(brokenPart) > 0)
+        {
+            warehouse[brokenPart]--;
+            money += repairCost;
+            SaveInventory(brokenPart, warehouse[brokenPart]);
+            SaveGame();
+            LogTransaction(client, brokenPart, repairCost, "success");
+            Console.WriteLine($"Успешный ремонт! +{repairCost} руб.");
+        }
+        else
+        {
+            Console.WriteLine("Нет детали! Замена случайной...");
+            if (warehouse.Count > 0)
+            {
+                var randomPart = warehouse.Keys.First();
+                warehouse[randomPart]--;
+                if (warehouse[randomPart] == 0) warehouse.Remove(randomPart);
+                int penalty = repairCost + 1000;
+                money -= penalty;
+                SaveInventory(randomPart, warehouse.GetValueOrDefault(randomPart));
+                SaveGame();
+                LogTransaction(client, brokenPart, -penalty, "failed");
+                Console.WriteLine($"Клиент недоволен! Штраф: {penalty} руб.");
+            }
+            else
+            {
+                int penalty = repairCost + 1500;
+                money -= penalty;
+                SaveGame();
+                LogTransaction(client, brokenPart, -penalty, "no_parts");
+                Console.WriteLine($"Нет деталей! Штраф: {penalty} руб.");
+            }
+        }
+    }
+
+    private void RefuseOrder(int client)
+    {
+        money -= 300;
+        SaveGame();
+        LogTransaction(client, "refusal", -300, "refused");
+        Console.WriteLine("Отказ. Штраф: 300 руб.");
+    }
+
+  

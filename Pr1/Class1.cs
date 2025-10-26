@@ -74,4 +74,31 @@ class AutoServiceGame
         }
     }
 
- 
+    private void ProcessDeliveries()
+    {
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+
+        // Доставляем готовые заказы
+        var cmd = new SqlCommand("SELECT * FROM PurchaseOrders WHERE GameId = @id AND DeliveryCounter <= 0", connection);
+        cmd.Parameters.AddWithValue("@id", gameId);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            string part = reader["PartName"].ToString();
+            int quantity = (int)reader["Quantity"];
+            warehouse[part] = warehouse.GetValueOrDefault(part) + quantity;
+            Console.WriteLine($"✓ Доставлены {quantity} {part}");
+            SaveInventory(part, warehouse[part]);
+            new SqlCommand("DELETE FROM PurchaseOrders WHERE Id = " + reader["Id"], connection).ExecuteNonQuery();
+        }
+        reader.Close();
+
+        // Уменьшаем счетчики
+        new SqlCommand("UPDATE PurchaseOrders SET DeliveryCounter = DeliveryCounter - 1 WHERE GameId = @id", connection)
+            .Parameters.AddWithValue("@id", gameId).ExecuteNonQuery();
+
+        UpdateOrders();
+    }
+
+   

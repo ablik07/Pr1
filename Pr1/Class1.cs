@@ -177,4 +177,76 @@ class AutoServiceGame
         Console.WriteLine("Отказ. Штраф: 300 руб.");
     }
 
+    private void ShowPurchaseMenu()
+    {
+        while (true)
+        {
+            Console.Clear();
+            Console.WriteLine($"Баланс: {money} руб.\nДоступные запчасти:");
+            var parts = GetParts();
+            for (int i = 0; i < parts.Count; i++)
+                Console.WriteLine($"{i + 1} - {parts[i].Name}: {parts[i].Price} руб.");
+            Console.WriteLine($"{parts.Count + 1} - Назад");
+
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice == parts.Count + 1) break;
+            if (choice > 0 && choice <= parts.Count)
+            {
+                var part = parts[choice - 1];
+                Console.Write($"Количество {part.Name}: ");
+                if (int.TryParse(Console.ReadLine(), out int quantity) && quantity > 0)
+                {
+                    int cost = part.Price * quantity;
+                    if (cost <= money)
+                    {
+                        money -= cost;
+                        CreateOrder(part.Name, quantity);
+                        SaveGame();
+                        Console.WriteLine($"Заказ на {quantity} {part.Name} оформлен! -{cost} руб.");
+                    }
+                    else Console.WriteLine("Недостаточно денег!");
+                }
+                else Console.WriteLine("Неверное количество!");
+            }
+            else Console.WriteLine("Неверный выбор!");
+            Console.ReadKey();
+        }
+    }
+
+    private List<Part> GetParts()
+    {
+        var parts = new List<Part>();
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        var cmd = new SqlCommand("SELECT Name, Price FROM Parts WHERE IsActive = 1", connection);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) parts.Add(new Part { Name = reader["Name"].ToString(), Price = (int)reader["Price"] });
+        return parts;
+    }
+
+    private void CreateOrder(string part, int quantity)
+    {
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        var cmd = new SqlCommand("INSERT INTO PurchaseOrders (GameId, PartName, Quantity, DeliveryCounter) VALUES (@id, @part, @qty, 2)", connection);
+        cmd.Parameters.AddWithValue("@id", gameId);
+        cmd.Parameters.AddWithValue("@part", part);
+        cmd.Parameters.AddWithValue("@qty", quantity);
+        cmd.ExecuteNonQuery();
+        UpdateOrders();
+    }
+
+    private void SaveInventory(string part, int quantity)
+    {
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        var cmd = new SqlCommand(
+            "IF EXISTS (SELECT 1 FROM Inventory WHERE GameId = @id AND PartName = @part) " +
+            "UPDATE Inventory SET Quantity = @qty WHERE GameId = @id AND PartName = @part " +
+            "ELSE INSERT INTO Inventory (GameId, PartName, Quantity) VALUES (@id, @part, @qty)", connection);
+        cmd.Parameters.AddWithValue("@id", gameId);
+        cmd.Parameters.AddWithValue("@part", part);
+        cmd.Parameters.AddWithValue("@qty", quantity);
+        cmd.ExecuteNonQuery();
+    }
+
   

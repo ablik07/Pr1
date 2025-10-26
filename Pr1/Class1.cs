@@ -101,4 +101,35 @@ class AutoServiceGame
         UpdateOrders();
     }
 
+    private void ShowStatus()
+    {
+        Console.WriteLine($"\nБаланс: {money} руб.\nСклад:");
+        foreach (var part in warehouse) Console.WriteLine($"  {part.Key}: {part.Value} шт.");
+        if (orders.Count > 0)
+        {
+            Console.WriteLine("\nОжидаются:");
+            foreach (var order in orders) Console.WriteLine($"  {order.PartName}: {order.Quantity} шт. (через {order.DeliveryCounter})");
+        }
+    }
+
+    private string GetRandomPart()
+    {
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        var cmd = new SqlCommand("SELECT Name FROM Parts WHERE IsActive = 1", connection);
+        using var reader = cmd.ExecuteReader();
+        var parts = new List<string>();
+        while (reader.Read()) parts.Add(reader["Name"].ToString());
+        return parts.Count > 0 ? parts[random.Next(parts.Count)] : "тормозные колодки";
+    }
+
+    private int GetPartPrice(string part)
+    {
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        var cmd = new SqlCommand("SELECT Price FROM Parts WHERE Name = @part", connection);
+        cmd.Parameters.AddWithValue("@part", part);
+        return (int)(cmd.ExecuteScalar() ?? 500);
+    }
+
    
